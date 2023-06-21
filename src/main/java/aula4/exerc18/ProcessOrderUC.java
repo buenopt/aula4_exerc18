@@ -18,28 +18,28 @@ public class ProcessOrderUC {
     public void setEmailSender(EmailSender emailSender) {
         this.emailSender = emailSender;
     }
-
+//Classe do exercicio proposto, identificar os nós
     public int[] process(Order order) {
         var errors = validator.validateBasicData(order);
-        if (!errors.isEmpty()) {
+        if (!errors.isEmpty()) {//Nó (1)
             var errorMsg = String.join(",", errors);
             throw new IllegalArgumentException(errorMsg);
         }
-        if (service.isDown() || emailSender.isOffline()) {
+        if (service.isDown() || emailSender.isOffline()) { //Nó (2 - Serv...) e Nó (3 - email...)
             throw new RuntimeException("Services offline. Try again later.");
         }
         int orderedProds = 0, unorderedProds = 0;
-        for (int prodId : order.getProdIds()) {
+        for (int prodId : order.getProdIds()) { //Nó (5)
             var success = repo.orderProduct(prodId);
-            if (success) {
+            if (success) { //Nó (6)
                 orderedProds++;
             } else {
-                unorderedProds++;
+                unorderedProds++; //Nó (7)
             }
         }
         var transportId = service.makeTag(order.getCode(), order.getAddress());
         var emailId = emailSender.sendEmail(order.getEmail(), "Your order", order.getDesc());
         int[] ret = {transportId, emailId, orderedProds, unorderedProds};
-        return ret;
+        return ret; //Nó (8)
     }
 }
