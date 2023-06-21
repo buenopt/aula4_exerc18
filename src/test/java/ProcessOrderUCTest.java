@@ -1,156 +1,149 @@
-import aula4.exerc18.Order;
-import aula4.exerc18.ProcessOrderUC;
-import aula4.exerc18.Repository;
-import aula4.exerc18.Validator;
-import java.util.ArrayList;
-import java.util.List;
-import org.junit.jupiter.api.Test;
+import aula4.exerc18.*;
+
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
+import java.util.ArrayList;
+import java.util.List;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.mockito.Mock;
+import org.mockito.MockitoAnnotations;
 
-class ProcessOrderUCTest {
+public class ProcessOrderUCTest {
+    private ProcessOrderUC processOrderUC;
 
-    @Test
-    void testProcess_ValidateBasicData_Success() {
-        // Caminho: 1-2-3
-        Validator validatorMock = mock(Validator.class);
-        Repository repoMock = mock(Repository.class);
-        ProcessOrderUC processOrderUC = new ProcessOrderUC(validatorMock, repoMock);
-        Order order = new Order(1, "buenopt@hotmail.com", "Exercicio18", "Endereco");
+    @Mock
+    private Validator validator;
 
-        when(validatorMock.validateBasicData(order)).thenReturn(new ArrayList<>());
-        when(repoMock.orderProduct(anyInt())).thenReturn(true);
-        when(serviceMock.isDown()).thenReturn(false);
-        when(emailSenderMock.isOffline()).thenReturn(false);
+    @Mock
+    private Repository repository;
 
-        int[] result = processOrderUC.process(order);
+    @Mock
+    private TransportService transportService;
 
-        assertNotNull(result);
-        assertEquals(0, result[0]);
-        assertEquals(0, result[1]);
-        assertEquals(0, result[2]);
-        assertEquals(0, result[3]);
+    @Mock
+    private EmailSender emailSender;
+
+    @BeforeEach
+    public void setUp() {
+        MockitoAnnotations.openMocks(this);
+        processOrderUC = new ProcessOrderUC(validator, repository);
+        processOrderUC.setService(transportService);
+        processOrderUC.setEmailSender(emailSender);
     }
 
     @Test
-    void testProcess_ValidateBasicData_ValidationError() {
-        // Caminho: 1-2-4
-        Validator validatorMock = mock(Validator.class);
-        Repository repoMock = mock(Repository.class);
-        ProcessOrderUC processOrderUC = new ProcessOrderUC(validatorMock, repoMock);
-        Order order = new Order(1, "buenopt@hotmail.com", "Exercicio18", "Endereco");
+    public void testeValidoEmailSucesso() {
+        Order order = new Order(1, "buenopt@hotmail.com", "Teste de pedido", "Endereço Teste");
+        List<Integer> prodIds = new ArrayList<>();
+        prodIds.add(1);
+        prodIds.add(2);
+        order.getProdIds().addAll(prodIds);
 
+        when(validator.validateBasicData(order)).thenReturn(new ArrayList<>());
+        when(transportService.isDown()).thenReturn(false);
+        when(emailSender.isOffline()).thenReturn(false);
+        when(repository.orderProduct(1)).thenReturn(true);
+        when(repository.orderProduct(2)).thenReturn(true);
+        when(transportService.makeTag(order.getCode(), order.getAddress())).thenReturn(123);
+        when(emailSender.sendEmail(order.getEmail(), "Seu pedido", order.getDesc())).thenReturn(456);
+
+        int[] expectedResult = { 123, 456, 2, 0 };
+        int[] result = processOrderUC.process(order);
+
+        assertArrayEquals(expectedResult, result);
+        verify(validator).validateBasicData(order);
+        verify(transportService).isDown();
+        verify(emailSender).isOffline();
+        verify(repository).orderProduct(1);
+        verify(repository).orderProduct(2);
+        verify(transportService).makeTag(order.getCode(), order.getAddress());
+        verify(emailSender).sendEmail(order.getEmail(), "Seu pedido", order.getDesc());
+    }
+
+    @Test
+    public void processoPedidoInvalido() {
+        Order order = new Order(1, "buenopt@hotmail.com", "Teste de pedido", "Endereço Teste");
         List<String> errors = new ArrayList<>();
-        errors.add("Error 1");
-        errors.add("Error 2");
+        errors.add("Invalid email");
+        errors.add("Invalid address");
 
-        when(validatorMock.validateBasicData(order)).thenReturn(errors);
+        when(validator.validateBasicData(order)).thenReturn(errors);
 
-        assertThrows(IllegalArgumentException.class, () -> {
+        IllegalArgumentException exception = assertThrows(IllegalArgumentException.class, () -> {
             processOrderUC.process(order);
         });
+
+        assertEquals("Invalid email,Invalid address", exception.getMessage());
+        verify(validator).validateBasicData(order);
+        verifyNoInteractions(transportService);
+        verifyNoInteractions(emailSender);
+        verifyNoInteractions(repository);
     }
 
     @Test
-    void testProcess_ValidateBasicData_ServiceDown() {
-        // Caminho: 1-2-3-5-6
-        Validator validatorMock = mock(Validator.class);
-        Repository repoMock = mock(Repository.class);
-        ProcessOrderUC processOrderUC = new ProcessOrderUC(validatorMock, repoMock);
-        Order order = new Order(1, "buenopt@hotmail.com", "Exercicio18", "Endereco");
+    public void processoServicoInativo() {
+        Order order = new Order(1, "buenopt@hotmail.com", "Teste de pedido", "Endereço Teste");
 
-        when(validatorMock.validateBasicData(order)).thenReturn(new ArrayList<>());
-        when(repoMock.orderProduct(anyInt())).thenReturn(true);
-        when(serviceMock.isDown()).thenReturn(true);
+        when(validator.validateBasicData(order)).thenReturn(new ArrayList<>());
+        when(transportService.isDown()).thenReturn(true);
 
-        assertThrows(RuntimeException.class, () -> {
+        RuntimeException exception = assertThrows(RuntimeException.class, () -> {
             processOrderUC.process(order);
         });
+
+        assertEquals("Services offline. Try again later.", exception.getMessage());
+        verify(validator).validateBasicData(order);
+        verify(transportService).isDown();
+        verifyNoInteractions(emailSender);
+        verifyNoInteractions(repository);
     }
 
     @Test
-    void testProcess_ValidateBasicData_EmailSenderOffline() {
-        // Caminho: 1-2-3-5-7
-        Validator validatorMock = mock(Validator.class);
-        Repository repoMock = mock(Repository.class);
-        ProcessOrderUC processOrderUC = new ProcessOrderUC(validatorMock, repoMock);
-        Order order = new Order(1, "buenopt@hotmail.com", "Exercicio18", "Endereco");
+    public void processoRementeEmailOffline() {
+        Order order = new Order(1, "buenopt@hotmail.com", "Teste de pedido", "Endereço Teste");
 
-        when(validatorMock.validateBasicData(order)).thenReturn(new ArrayList<>());
-        when(repoMock.orderProduct(anyInt())).thenReturn(true);
-        when(serviceMock.isDown()).thenReturn(false);
-        when(emailSenderMock.isOffline()).thenReturn(true);
+        when(validator.validateBasicData(order)).thenReturn(new ArrayList<>());
+        when(transportService.isDown()).thenReturn(false);
+        when(emailSender.isOffline()).thenReturn(true);
 
-        assertThrows(RuntimeException.class, () -> {
+        RuntimeException exception = assertThrows(RuntimeException.class, () -> {
             processOrderUC.process(order);
         });
+
+        assertEquals("Services offline. Try again later.", exception.getMessage());
+        verify(validator).validateBasicData(order);
+        verify(transportService).isDown();
+        verify(emailSender).isOffline();
+        verifyNoInteractions(repository);
     }
 
     @Test
-    void testProcess_OrderProduct_Success() {
-        // Caminho: 1-2-3-8-9
-        Validator validatorMock = mock(Validator.class);
-        Repository repoMock = mock(Repository.class);
-        ProcessOrderUC processOrderUC = new ProcessOrderUC(validatorMock, repoMock);
-        Order order = new Order(1, "buenopt@hotmail.com", "Exercicio18", "Endereco");
+    public void processoAlgunsProdutosPedidos() {
+        Order order = new Order(1, "buenopt@hotmail.com", "Teste de pedido", "Endereço Teste");
+        List<Integer> prodIds = new ArrayList<>();
+        prodIds.add(1);
+        prodIds.add(2);
+        order.getProdIds().addAll(prodIds);
 
-        when(validatorMock.validateBasicData(order)).thenReturn(new ArrayList<>());
-        when(repoMock.orderProduct(anyInt())).thenReturn(true);
-        when(serviceMock.isDown()).thenReturn(false);
-        when(emailSenderMock.isOffline()).thenReturn(false);
+        when(validator.validateBasicData(order)).thenReturn(new ArrayList<>());
+        when(transportService.isDown()).thenReturn(false);
+        when(emailSender.isOffline()).thenReturn(false);
+        when(repository.orderProduct(1)).thenReturn(true);
+        when(repository.orderProduct(2)).thenReturn(false);
+        when(transportService.makeTag(order.getCode(), order.getAddress())).thenReturn(123);
+        when(emailSender.sendEmail(order.getEmail(), "Seu pedido", order.getDesc())).thenReturn(456);
 
+        int[] expectedResult = { 123, 456, 1, 1 };
         int[] result = processOrderUC.process(order);
 
-        assertNotNull(result);
-        assertEquals(0, result[0]);
-        assertEquals(0, result[1]);
-        assertEquals(1, result[2]);
-        assertEquals(0, result[3]);
-    }
-
-    @Test
-    void testProcess_OrderProduct_Failure() {
-        // Caminho: 1-2-3-8-10
-        Validator validatorMock = mock(Validator.class);
-        Repository repoMock = mock(Repository.class);
-        ProcessOrderUC processOrderUC = new ProcessOrderUC(validatorMock, repoMock);
-        Order order = new Order(1, "buenopt@hotmail.com", "Exercicio18", "Endereco");
-
-        when(validatorMock.validateBasicData(order)).thenReturn(new ArrayList<>());
-        when(repoMock.orderProduct(anyInt())).thenReturn(false);
-        when(serviceMock.isDown()).thenReturn(false);
-        when(emailSenderMock.isOffline()).thenReturn(false);
-
-        int[] result = processOrderUC.process(order);
-
-        assertNotNull(result);
-        assertEquals(0, result[0]);
-        assertEquals(0, result[1]);
-        assertEquals(0, result[2]);
-        assertEquals(1, result[3]);
-    }
-
-    @Test
-    void testProcess_MakeTag_SendEmail_Success() {
-        // Caminho: 1-2-3-8-9-11-12
-        Validator validatorMock = mock(Validator.class);
-        Repository repoMock = mock(Repository.class);
-        ProcessOrderUC processOrderUC = new ProcessOrderUC(validatorMock, repoMock);
-        Order order = new Order(1, "buenopt@hotmail.com", "Exercicio18", "Endereco");
-
-        when(validatorMock.validateBasicData(order)).thenReturn(new ArrayList<>());
-        when(repoMock.orderProduct(anyInt())).thenReturn(true);
-        when(serviceMock.isDown()).thenReturn(false);
-        when(emailSenderMock.isOffline()).thenReturn(false);
-        when(serviceMock.makeTag(anyInt(), anyString())).thenReturn(100);
-        when(emailSenderMock.sendEmail(anyString(), anyString(), anyString())).thenReturn(200);
-
-        int[] result = processOrderUC.process(order);
-
-        assertNotNull(result);
-        assertEquals(100, result[0]);
-        assertEquals(200, result[1]);
-        assertEquals(1, result[2]);
-        assertEquals(0, result[3]);
+        assertArrayEquals(expectedResult, result);
+        verify(validator).validateBasicData(order);
+        verify(transportService).isDown();
+        verify(emailSender).isOffline();
+        verify(repository).orderProduct(1);
+        verify(repository).orderProduct(2);
+        verify(transportService).makeTag(order.getCode(), order.getAddress());
+        verify(emailSender).sendEmail(order.getEmail(), "Seu pedido", order.getDesc());
     }
 }
