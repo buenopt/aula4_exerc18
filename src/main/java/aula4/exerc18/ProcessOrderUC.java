@@ -19,27 +19,46 @@ public class ProcessOrderUC {
         this.emailSender = emailSender;
     }
 //Classe do exercicio proposto, identificar os nós
-    public int[] process(Order order) {
-        var errors = validator.validateBasicData(order);
-        if (!errors.isEmpty()) {//Nó (1)
-            var errorMsg = String.join(",", errors);
-            throw new IllegalArgumentException(errorMsg);
-        }
-        if (service.isDown() || emailSender.isOffline()) { //Nó (2 - Serv...) e Nó (3 - email...)
-            throw new RuntimeException("Services offline. Try again later.");
-        }
-        int orderedProds = 0, unorderedProds = 0;
-        for (int prodId : order.getProdIds()) { //Nó (5)
-            var success = repo.orderProduct(prodId);
-            if (success) { //Nó (6)
-                orderedProds++;
-            } else {
-                unorderedProds++; //Nó (7)
-            }
-        }
-        var transportId = service.makeTag(order.getCode(), order.getAddress());
-        var emailId = emailSender.sendEmail(order.getEmail(), "Your order", order.getDesc());
-        int[] ret = {transportId, emailId, orderedProds, unorderedProds};
-        return ret; //Nó (8)
+public int[] process(Order order) {
+    // [1]: Validação dos dados básicos do pedido e tratamento de erros.
+    var errors = validator.validateBasicData(order);
+    if (!errors.isEmpty()) {
+        // [2]: Verificação se há erros na validação dos dados básicos do pedido.
+        var errorMsg = String.join(",", errors);
+        // [3]: Tratamento de erros: Concatenação das mensagens de erro em uma única string.
+        throw new IllegalArgumentException(errorMsg);
+        // [4]: Lançamento da exceção IllegalArgumentException com a mensagem de erro concatenada.
     }
+
+    // [5]: Verificação do status dos serviços (TransportService e EmailSender).
+    if (service.isDown() || emailSender.isOffline()) {
+        // [6]: Verificação se o serviço de transporte está offline.
+        // [7]: Verificação se o serviço de envio de email está offline.
+        throw new RuntimeException("Services offline. Try again later.");
+        // [8]: Lançamento da exceção RuntimeException indicando que os serviços estão offline.
+    }
+
+    int orderedProds = 0, unorderedProds = 0;
+    // [9]: Processamento do pedido, incluindo a chamada para repo.orderProduct e os retornos associados.
+    for (int prodId : order.getProdIds()) {
+        var success = repo.orderProduct(prodId);
+        if (success) {
+            // [11]: Verificação se o produto foi pedido com sucesso.
+            orderedProds++;
+        } else {
+            // [12]: Verificação se o produto não foi pedido com sucesso.
+            unorderedProds++;
+        }
+        // [10]: Verificação se há mais produtos no pedido.
+    }
+
+    // [13]: Geração do transportId e emailId.
+    var transportId = service.makeTag(order.getCode(), order.getAddress());
+    var emailId = emailSender.sendEmail(order.getEmail(), "Your order", order.getDesc());
+
+    int[] ret = {transportId, emailId, orderedProds, unorderedProds};
+
+    // [14]: Retorno do array ret.
+    return ret;
+}
 }
