@@ -65,8 +65,8 @@ public class ProcessOrderUCTest {
     public void processoPedidoInvalido() {
         Order order = new Order(1, "buenopt@hotmail.com", "Teste de pedido", "Endereço Teste");
         List<String> errors = new ArrayList<>();
-        errors.add("Invalid email");
-        errors.add("Invalid address");
+        errors.add("e-mail inválido");
+        errors.add("Endereço inválido");
 
         when(validator.validateBasicData(order)).thenReturn(errors);
 
@@ -74,7 +74,7 @@ public class ProcessOrderUCTest {
             processOrderUC.process(order);
         });
 
-        assertEquals("Invalid email,Invalid address", exception.getMessage());
+        assertEquals("e-mail inválido,Endereço inválido", exception.getMessage());
         verify(validator).validateBasicData(order);
         verifyNoInteractions(transportService);
         verifyNoInteractions(emailSender);
@@ -92,7 +92,7 @@ public class ProcessOrderUCTest {
             processOrderUC.process(order);
         });
 
-        assertEquals("Services offline. Try again later.", exception.getMessage());
+        assertEquals("Serviços off-line. Tente mais tarde..", exception.getMessage());
         verify(validator).validateBasicData(order);
         verify(transportService).isDown();
         verifyNoInteractions(emailSender);
@@ -111,7 +111,7 @@ public class ProcessOrderUCTest {
             processOrderUC.process(order);
         });
 
-        assertEquals("Services offline. Try again later.", exception.getMessage());
+        assertEquals("Serviços off-line. Tente mais tarde..", exception.getMessage());
         verify(validator).validateBasicData(order);
         verify(transportService).isDown();
         verify(emailSender).isOffline();
