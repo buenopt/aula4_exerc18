@@ -34,48 +34,48 @@ public class ProcessOrderUCTest {
 
     @Test
     public void testeValidoEmailSucesso() {
-        Order order = new Order(1, "buenopt@hotmail.com", "Teste de pedido", "Endereço Teste");
+        Order pedido = new Order(1, "buenopt@hotmail.com", "Teste de pedido", "Endereço Teste");
         List<Integer> prodIds = new ArrayList<>();
         prodIds.add(1);
         prodIds.add(2);
-        order.getProdIds().addAll(prodIds);
+        pedido.getProdIds().addAll(prodIds);
 
-        when(validator.validateBasicData(order)).thenReturn(new ArrayList<>());
+        when(validator.validateBasicData(pedido)).thenReturn(new ArrayList<>());
         when(transportService.isDown()).thenReturn(false);
         when(emailSender.isOffline()).thenReturn(false);
         when(repository.orderProduct(1)).thenReturn(true);
         when(repository.orderProduct(2)).thenReturn(true);
-        when(transportService.makeTag(order.getCode(), order.getAddress())).thenReturn(123);
-        when(emailSender.sendEmail(order.getEmail(), "Seu pedido", order.getDesc())).thenReturn(456);
+        when(transportService.makeTag(pedido.getCode(), pedido.getAddress())).thenReturn(123);
+        when(emailSender.sendEmail(pedido.getEmail(), "Your order", pedido.getDesc())).thenReturn(456);
 
         int[] expectedResult = { 123, 456, 2, 0 };
-        int[] result = processOrderUC.process(order);
+        int[] result = processOrderUC.process(pedido);
 
         assertArrayEquals(expectedResult, result);
-        verify(validator).validateBasicData(order);
+        verify(validator).validateBasicData(pedido);
         verify(transportService).isDown();
         verify(emailSender).isOffline();
         verify(repository).orderProduct(1);
         verify(repository).orderProduct(2);
-        verify(transportService).makeTag(order.getCode(), order.getAddress());
-        verify(emailSender).sendEmail(order.getEmail(), "Seu pedido", order.getDesc());
+        verify(transportService).makeTag(pedido.getCode(), pedido.getAddress());
+        verify(emailSender).sendEmail(pedido.getEmail(), "Your order", pedido.getDesc());
     }
 
     @Test
     public void processoPedidoInvalido() {
-        Order order = new Order(1, "buenopt@hotmail.com", "Teste de pedido", "Endereço Teste");
+        Order pedido = new Order(1, "buenopt@hotmail.com", "Teste de pedido", "Endereço Teste");
         List<String> errors = new ArrayList<>();
         errors.add("e-mail inválido");
         errors.add("Endereço inválido");
 
-        when(validator.validateBasicData(order)).thenReturn(errors);
+        when(validator.validateBasicData(pedido)).thenReturn(errors);
 
         IllegalArgumentException exception = assertThrows(IllegalArgumentException.class, () -> {
-            processOrderUC.process(order);
+            processOrderUC.process(pedido);
         });
 
         assertEquals("e-mail inválido,Endereço inválido", exception.getMessage());
-        verify(validator).validateBasicData(order);
+        verify(validator).validateBasicData(pedido);
         verifyNoInteractions(transportService);
         verifyNoInteractions(emailSender);
         verifyNoInteractions(repository);
@@ -83,17 +83,17 @@ public class ProcessOrderUCTest {
 
     @Test
     public void processoServicoInativo() {
-        Order order = new Order(1, "buenopt@hotmail.com", "Teste de pedido", "Endereço Teste");
+        Order pedido = new Order(1, "buenopt@hotmail.com", "Teste de pedido", "Endereço Teste");
 
-        when(validator.validateBasicData(order)).thenReturn(new ArrayList<>());
+        when(validator.validateBasicData(pedido)).thenReturn(new ArrayList<>());
         when(transportService.isDown()).thenReturn(true);
 
         RuntimeException exception = assertThrows(RuntimeException.class, () -> {
-            processOrderUC.process(order);
+            processOrderUC.process(pedido);
         });
 
-        assertEquals("Serviços off-line. Tente mais tarde..", exception.getMessage());
-        verify(validator).validateBasicData(order);
+        assertEquals("Services offline. Try again later.", exception.getMessage());
+        verify(validator).validateBasicData(pedido);
         verify(transportService).isDown();
         verifyNoInteractions(emailSender);
         verifyNoInteractions(repository);
@@ -101,18 +101,18 @@ public class ProcessOrderUCTest {
 
     @Test
     public void processoRementeEmailOffline() {
-        Order order = new Order(1, "buenopt@hotmail.com", "Teste de pedido", "Endereço Teste");
+        Order pedido = new Order(1, "buenopt@hotmail.com", "Teste de pedido", "Endereço Teste");
 
-        when(validator.validateBasicData(order)).thenReturn(new ArrayList<>());
+        when(validator.validateBasicData(pedido)).thenReturn(new ArrayList<>());
         when(transportService.isDown()).thenReturn(false);
         when(emailSender.isOffline()).thenReturn(true);
 
         RuntimeException exception = assertThrows(RuntimeException.class, () -> {
-            processOrderUC.process(order);
+            processOrderUC.process(pedido);
         });
 
-        assertEquals("Serviços off-line. Tente mais tarde..", exception.getMessage());
-        verify(validator).validateBasicData(order);
+        assertEquals("Services offline. Try again later.", exception.getMessage());
+        verify(validator).validateBasicData(pedido);
         verify(transportService).isDown();
         verify(emailSender).isOffline();
         verifyNoInteractions(repository);
@@ -120,30 +120,30 @@ public class ProcessOrderUCTest {
 
     @Test
     public void processoAlgunsProdutosPedidos() {
-        Order order = new Order(1, "buenopt@hotmail.com", "Teste de pedido", "Endereço Teste");
+        Order pedido = new Order(1, "buenopt@hotmail.com", "Teste de pedido", "Endereço Teste");
         List<Integer> prodIds = new ArrayList<>();
         prodIds.add(1);
         prodIds.add(2);
-        order.getProdIds().addAll(prodIds);
+        pedido.getProdIds().addAll(prodIds);
 
-        when(validator.validateBasicData(order)).thenReturn(new ArrayList<>());
+        when(validator.validateBasicData(pedido)).thenReturn(new ArrayList<>());
         when(transportService.isDown()).thenReturn(false);
         when(emailSender.isOffline()).thenReturn(false);
         when(repository.orderProduct(1)).thenReturn(true);
         when(repository.orderProduct(2)).thenReturn(false);
-        when(transportService.makeTag(order.getCode(), order.getAddress())).thenReturn(123);
-        when(emailSender.sendEmail(order.getEmail(), "Seu pedido", order.getDesc())).thenReturn(456);
+        when(transportService.makeTag(pedido.getCode(), pedido.getAddress())).thenReturn(123);
+        when(emailSender.sendEmail(pedido.getEmail(), "Your order", pedido.getDesc())).thenReturn(456);
 
         int[] expectedResult = { 123, 456, 1, 1 };
-        int[] result = processOrderUC.process(order);
+        int[] result = processOrderUC.process(pedido);
 
         assertArrayEquals(expectedResult, result);
-        verify(validator).validateBasicData(order);
+        verify(validator).validateBasicData(pedido);
         verify(transportService).isDown();
         verify(emailSender).isOffline();
         verify(repository).orderProduct(1);
         verify(repository).orderProduct(2);
-        verify(transportService).makeTag(order.getCode(), order.getAddress());
-        verify(emailSender).sendEmail(order.getEmail(), "Seu pedido", order.getDesc());
+        verify(transportService).makeTag(pedido.getCode(), pedido.getAddress());
+        verify(emailSender).sendEmail(pedido.getEmail(), "Your order", pedido.getDesc());
     }
 }
